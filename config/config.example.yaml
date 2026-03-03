@@ -1,29 +1,59 @@
 # RedNote AI 配置文件
+# 复制为 config.yaml 并填入你的配置
 
-# LLM 配置
+# =============================================================================
+# LLM 配置 - 支持自定义 base_url 和 model
+# =============================================================================
+
 llm:
-  # 文案生成
+  # 文案生成（主要）
   writer:
-    provider: anthropic  # anthropic / openai / zhipu / qwen
+    provider: anthropic  # anthropic / openai / openai_compatible
     model: claude-3-5-sonnet-20241022
     api_key: ${ANTHROPIC_API_KEY}
-  
-  # 热点分析
+    base_url: https://api.anthropic.com  # 可自定义，如代理地址
+    
+  # 热点分析（轻量）
   analyze:
     provider: openai
     model: gpt-4o-mini
     api_key: ${OPENAI_API_KEY}
+    base_url: https://api.openai.com/v1  # 可自定义
 
-# 图片生成
+# -----------------------------------------------------------------------------
+# 示例：使用 OpenAI 兼容 API（如 DeepSeek、通义、硅基流动等）
+# -----------------------------------------------------------------------------
+# llm:
+#   writer:
+#     provider: openai  # 用 openai 兼容模式
+#     model: deepseek-chat
+#     api_key: ${DEEPSEEK_API_KEY}
+#     base_url: https://api.deepseek.com/v1
+#
+#   analyze:
+#     provider: openai
+#     model: qwen-turbo
+#     api_key: ${DASHSCOPE_API_KEY}
+#     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# =============================================================================
+# 图片生成配置
+# =============================================================================
+
 image:
-  provider: dalle  # dalle / midjourney / sd / jimeng
+  provider: openai  # openai / midjourney / sd
+  model: dall-e-3
   api_key: ${OPENAI_API_KEY}
+  base_url: https://api.openai.com/v1
 
+# =============================================================================
 # 信息源配置
+# =============================================================================
+
 sources:
   twitter:
     enabled: true
-    cookies: ${TWITTER_COOKIES}
+    cookies: ${TWITTER_COOKIES}  # 可选，用于完整功能
     accounts:
       - OpenAI
       - AnthropicAI
@@ -48,28 +78,30 @@ sources:
       - https://openai.com/blog/rss.xml
       - https://www.anthropic.com/rss.xml
 
+# =============================================================================
 # 小红书发布配置
+# =============================================================================
+
 xiaohongshu:
-  # 使用 MCP 服务
   mcp_url: http://localhost:18060/mcp
-  # 或使用 cookies
   cookies: ${XHS_COOKIES}
 
+# =============================================================================
 # 内容生成配置
-generate:
-  # 每次生成的变体数量
-  variants: 3
-  # 默认风格
-  default_style: news
-  # 内容长度（字符）
-  max_length: 800
+# =============================================================================
 
+generate:
+  variants: 3           # 每次生成的变体数量
+  default_style: news   # 默认风格: news / tutorial / review / opinion
+  max_length: 800       # 内容最大长度（字符）
+
+# =============================================================================
 # 定时任务
+# =============================================================================
+
 schedule:
-  # 每日抓取时间
-  fetch_cron: "0 8 * * *"
-  # 发布时间（需人工确认后）
-  publish_times:
+  fetch_cron: "0 8 * * *"  # 每日抓取时间
+  publish_times:            # 推荐发布时间
     - "12:00"
     - "18:00"
     - "21:00"
