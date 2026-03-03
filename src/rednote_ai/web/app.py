@@ -128,6 +128,16 @@ async def settings_page(request: Request):
     })
 
 
+
+
+@app.get("/publish", response_class=HTMLResponse)
+async def publish_page(request: Request, draft_id: str = None):
+    """发布页面"""
+    return templates.TemplateResponse("publish.html", {
+        "request": request,
+        "draft_id": draft_id,
+    })
+
 # ============================================================================
 # API 路由
 # ============================================================================
@@ -293,3 +303,120 @@ async def api_status():
             "approved_count": len([d for d in rn.drafts if d.status == "approved"]),
         }
     }
+
+
+# ============================================================================
+# 小红书发布 API
+# ============================================================================
+
+class PublishRequest(BaseModel):
+    draft_id: str
+    method: str = "manual"  # mcp / browser / manual
+    generate_cover: bool = False
+    cover_style: str = "tech"
+
+
+@app.get("/api/publish/status")
+async def api_publish_status():
+    """获取发布能力状态"""
+    from ..publish.xiaohongshu import XiaohongshuPublisher
+    
+    publisher = XiaohongshuPublisher()
+    status = await publisher.check_status()
+    
+    return {
+        "success": True,
+        "status": status
+    }
+
+
+@app.post("/api/publish")
+async def api_publish(req: PublishRequest):
+    """发布内容到小红书"""
+    from ..publish.xiaohongshu import XiaohongshuPublisher, PublishMethod
+    from ..publish.image import ImageGenerator
+    
+    rn = get_rednote()
+    draft = next((d for d in rn.drafts if d.id == req.draft_id), None)
+    
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    
+    images = []
+    
+    # 生成封面图
+    if req.generate_cover:
+        try:
+            img_gen = ImageGenerator()
+            cover = await img_gen.generate_text_image(
+                title=draft.content.title[:20],
+                style=req.cover_style,
+                draft_id=draft.id,
+            )
+            if cover:
+                images.append(cover.path)
+        except Exception as e:
+            print(f"Cover generation failed: {e}")
+    
+    # 发布
+    method_map = {
+        "mcp": PublishMethod.MCP,
+        "browser": PublishMethod.BROWSER,
+        "manual": PublishMethod.MANUAL,
+    }
+    
+    publisher = XiaohongshuPublisher(method=method_map.get(req.method, PublishMethod.MANUAL))
+    result = await publisher.publish(draft.content, images=images)
+    
+    if result.success:
+        draft.status = "published"
+    
+    return {
+        "success": result.success,
+        "method": result.method.value,
+        "note_id": result.note_id,
+        "url": result.url,
+        "error": result.error,
+    }
+
+
+@app.post("/api/generate-cover/{draft_id}")
+async def api_generate_cover(draft_id: str, style: str = "tech", use_ai: bool = False):
+    """生成封面图"""
+    from ..publish.image import ImageGenerator
+    
+    rn = get_rednote()
+    draft = next((d for d in rn.drafts if d.id == draft_id), None)
+    
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    
+    img_gen = ImageGenerator()
+    
+    if use_ai and draft.content.cover_prompt:
+        # 使用 AI 生成
+        cover = await img_gen.generate_cover(
+            prompt=draft.content.cover_prompt,
+            style=style,
+            draft_id=draft_id,
+        )
+    else:
+        # 使用文字封面
+        cover = await img_gen.generate_text_image(
+            title=draft.content.title[:15],
+            subtitle="AI 热点速递",
+            style=style,
+            draft_id=draft_id,
+        )
+    
+    if cover:
+        return {
+            "success": True,
+            "image": {
+                "path": cover.path,
+                "url": cover.url,
+                "prompt": cover.prompt,
+            }
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to generate cover")
