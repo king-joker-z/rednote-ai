@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - RedNote AI{% endblock %}
+
+{% block content %}
+<div x-data="dashboard()" x-init="loadStatus()">
+    <!-- 统计卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">草稿数量</p>
+                    <p class="text-3xl font-bold text-gray-900" x-text="status.drafts_count || 0"></p>
+                </div>
+                <div class="text-4xl">📝</div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">待审核</p>
+                    <p class="text-3xl font-bold text-yellow-600" x-text="(status.drafts_count || 0) - (status.approved_count || 0)"></p>
+                </div>
+                <div class="text-4xl">⏳</div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">已通过</p>
+                    <p class="text-3xl font-bold text-green-600" x-text="status.approved_count || 0"></p>
+                </div>
+                <div class="text-4xl">✅</div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">信息源</p>
+                    <p class="text-3xl font-bold text-purple-600" x-text="status.sources?.length || 0"></p>
+                </div>
+                <div class="text-4xl">📡</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-8">
+        <h2 class="text-lg font-semibold mb-4">🚀 快捷操作</h2>
+        <div class="flex flex-wrap gap-4">
+            <a href="/fetch" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition shadow-sm">
+                <span class="mr-2">📡</span> 抓取热点
+            </a>
+            <button @click="quickGenerate()" :disabled="loading" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition shadow-sm disabled:opacity-50">
+                <span class="mr-2" x-text="loading ? '⏳' : '✨'"></span>
+                <span x-text="loading ? '生成中...' : '一键生成'"></span>
+            </button>
+            <a href="/drafts" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition shadow-sm">
+                <span class="mr-2">📋</span> 查看草稿
+            </a>
+        </div>
+    </div>
+
+    <!-- 最近草稿 -->
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">📝 最近草稿</h2>
+            <a href="/drafts" class="text-purple-600 hover:text-purple-700 text-sm">查看全部 →</a>
+        </div>
+        
+        <div x-show="drafts.length === 0" class="text-center py-8 text-gray-500">
+            暂无草稿，点击「一键生成」创建
+        </div>
+        
+        <div class="space-y-4">
+            <template x-for="draft in drafts.slice(0, 5)" :key="draft.id">
+                <div class="border border-gray-100 rounded-lg p-4 hover:border-purple-200 transition">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h3 class="font-medium text-gray-900" x-text="draft.title"></h3>
+                            <p class="text-gray-500 text-sm mt-1 line-clamp-2" x-text="draft.content"></p>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="text-xs px-2 py-1 rounded-full" 
+                                      :class="draft.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
+                                      x-text="draft.status === 'approved' ? '已通过' : '待审核'"></span>
+                                <span class="text-xs text-gray-400" x-text="'分数: ' + draft.score.toFixed(2)"></span>
+                            </div>
+                        </div>
+                        <a :href="'/drafts/' + draft.id" class="ml-4 text-purple-600 hover:text-purple-700">
+                            查看 →
+                        </a>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function dashboard() {
+    return {
+        status: {},
+        drafts: [],
+        loading: false,
+        
+        async loadStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                this.status = data.status;
+                
+                const draftsRes = await fetch('/api/drafts');
+                const draftsData = await draftsRes.json();
+                this.drafts = draftsData.drafts || [];
+            } catch (e) {
+                console.error('Failed to load status:', e);
+            }
+        },
+        
+        async quickGenerate() {
+            this.loading = true;
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: 'arxiv', limit: 10, top_n: 3, generate_digest: true })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`生成成功！创建了 ${data.count} 篇草稿`);
+                    this.loadStatus();
+                } else {
+                    alert('生成失败: ' + (data.detail || '未知错误'));
+                }
+            } catch (e) {
+                alert('生成失败: ' + e.message);
+            } finally {
+                this.loading = false;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

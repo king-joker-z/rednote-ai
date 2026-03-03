@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}编辑草稿 - RedNote AI{% endblock %}
+
+{% block content %}
+<div x-data="draftEditor()" x-init="loadDraft()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <a href="/drafts" class="text-gray-500 hover:text-gray-700 text-sm">← 返回草稿列表</a>
+            <h1 class="text-2xl font-bold text-gray-900 mt-2">✏️ 编辑草稿</h1>
+        </div>
+        <div class="flex gap-2">
+            <button @click="saveDraft()" :disabled="saving"
+                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50">
+                <span x-text="saving ? '保存中...' : '💾 保存'"></span>
+            </button>
+            <button @click="approveDraft()" x-show="draft.status !== 'approved'"
+                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                ✅ 通过审核
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 编辑区 -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <label class="block text-sm font-medium text-gray-700 mb-2">标题</label>
+                <input type="text" x-model="draft.title" 
+                       class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg">
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <label class="block text-sm font-medium text-gray-700 mb-2">正文</label>
+                <textarea x-model="draft.content" rows="15"
+                          class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"></textarea>
+                <p class="text-xs text-gray-400 mt-2">字数: <span x-text="draft.content?.length || 0"></span></p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <label class="block text-sm font-medium text-gray-700 mb-2">标签</label>
+                <input type="text" x-model="tagsInput" @keydown.enter.prevent="addTag()"
+                       placeholder="输入标签后按回车添加"
+                       class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                <div class="flex flex-wrap gap-2 mt-3">
+                    <template x-for="(tag, index) in draft.tags" :key="index">
+                        <span class="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                            #<span x-text="tag"></span>
+                            <button @click="removeTag(index)" class="ml-2 text-purple-500 hover:text-purple-700">×</button>
+                        </span>
+                    </template>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <label class="block text-sm font-medium text-gray-700 mb-2">封面图 Prompt</label>
+                <textarea x-model="draft.cover_prompt" rows="3"
+                          class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"></textarea>
+            </div>
+        </div>
+
+        <!-- 预览区 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 sticky top-6">
+            <h2 class="text-lg font-semibold mb-4">📱 小红书预览</h2>
+            
+            <div class="bg-gray-100 rounded-xl p-4 max-w-sm mx-auto">
+                <!-- 模拟小红书卡片 -->
+                <div class="bg-white rounded-lg overflow-hidden shadow">
+                    <div class="aspect-[3/4] bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                        <span class="text-white text-6xl">🖼️</span>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-bold text-base leading-tight" x-text="draft.title || '标题'"></h3>
+                        <p class="text-gray-600 text-sm mt-2 line-clamp-3" x-text="draft.content?.substring(0, 100) + '...' || '内容预览'"></p>
+                        <div class="flex flex-wrap gap-1 mt-2">
+                            <template x-for="tag in (draft.tags || []).slice(0, 3)" :key="tag">
+                                <span class="text-xs text-blue-500" x-text="'#' + tag"></span>
+                            </template>
+                        </div>
+                        <div class="flex items-center justify-between mt-4 pt-3 border-t">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 bg-purple-500 rounded-full"></div>
+                                <span class="text-xs text-gray-500">AI 博主</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-gray-400 text-xs">
+                                <span>❤️ 0</span>
+                                <span>⭐ 0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">状态信息</h3>
+                <div class="space-y-1 text-sm text-gray-500">
+                    <p>ID: <span x-text="draft.id"></span></p>
+                    <p>状态: <span x-text="draft.status === 'approved' ? '已通过' : '待审核'" 
+                                  :class="draft.status === 'approved' ? 'text-green-600' : 'text-yellow-600'"></span></p>
+                    <p>分数: <span x-text="draft.score?.toFixed(2)"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function draftEditor() {
+    return {
+        draft: { title: '', content: '', tags: [], cover_prompt: '', status: 'draft', score: 0 },
+        tagsInput: '',
+        saving: false,
+        
+        async loadDraft() {
+            const id = '{{ draft.id }}';
+            try {
+                const res = await fetch(`/api/drafts/${id}`);
+                const data = await res.json();
+                if (data.success) {
+                    this.draft = data.draft;
+                }
+            } catch (e) {
+                console.error('Failed to load draft:', e);
+            }
+        },
+        
+        addTag() {
+            const tag = this.tagsInput.trim().replace(/^#/, '');
+            if (tag && !this.draft.tags.includes(tag)) {
+                this.draft.tags.push(tag);
+            }
+            this.tagsInput = '';
+        },
+        
+        removeTag(index) {
+            this.draft.tags.splice(index, 1);
+        },
+        
+        async saveDraft() {
+            this.saving = true;
+            try {
+                const res = await fetch(`/api/drafts/${this.draft.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: this.draft.title,
+                        content: this.draft.content,
+                        tags: this.draft.tags
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('保存成功！');
+                }
+            } catch (e) {
+                alert('保存失败: ' + e.message);
+            } finally {
+                this.saving = false;
+            }
+        },
+        
+        async approveDraft() {
+            try {
+                await fetch(`/api/drafts/${this.draft.id}/approve`, { method: 'POST' });
+                this.draft.status = 'approved';
+                alert('审核通过！');
+            } catch (e) {
+                alert('操作失败: ' + e.message);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

@@ -1,4 +1,4 @@
-"""命令行入口 - 支持自定义 LLM 配置"""
+"""命令行入口"""
 
 import asyncio
 import os
@@ -58,7 +58,6 @@ def generate(
     limit: int = typer.Option(10, help="抓取数量"),
     top: int = typer.Option(3, help="生成 Top N"),
     digest: bool = typer.Option(True, help="是否生成日报"),
-    # LLM 配置
     provider: str = typer.Option(None, help="LLM 提供商: anthropic/openai"),
     model: str = typer.Option(None, help="模型名称"),
     api_key: str = typer.Option(None, envvar=["ANTHROPIC_API_KEY", "OPENAI_API_KEY"], help="API Key"),
@@ -70,7 +69,6 @@ def generate(
     
     console.print("[bold green]🚀 启动内容生成流程...[/bold green]\n")
     
-    # 构建 LLM 配置
     llm_config = {}
     if provider:
         llm_config["provider"] = provider
@@ -81,7 +79,6 @@ def generate(
     if base_url:
         llm_config["base_url"] = base_url
     
-    # 如果没有命令行参数，从配置文件读取
     if not llm_config:
         config = Config()
         llm_config = config.llm_writer
@@ -116,6 +113,26 @@ def generate(
 
 
 @app.command()
+def web(
+    host: str = typer.Option("127.0.0.1", help="监听地址"),
+    port: int = typer.Option(8000, help="端口"),
+    reload: bool = typer.Option(False, help="开发模式自动重载"),
+):
+    """启动 Web 控制台"""
+    console.print(f"[bold green]🌐 启动 Web 控制台...[/bold green]")
+    console.print(f"  地址: http://{host}:{port}")
+    console.print(f"  按 Ctrl+C 停止\n")
+    
+    import uvicorn
+    uvicorn.run(
+        "rednote_ai.web:app",
+        host=host,
+        port=port,
+        reload=reload,
+    )
+
+
+@app.command()
 def config(
     show: bool = typer.Option(False, "--show", help="显示当前配置"),
     init: bool = typer.Option(False, "--init", help="初始化配置文件"),
@@ -126,7 +143,6 @@ def config(
     config_path = get_config_path()
     
     if init:
-        # 复制示例配置
         example_path = Path(__file__).parent.parent.parent / "config" / "config.example.yaml"
         config_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -143,7 +159,6 @@ def config(
             console.print(f"[bold]配置文件: {config_path}[/bold]\n")
             cfg = load_config(config_path)
             
-            # 隐藏敏感信息
             import json
             def mask_sensitive(obj):
                 if isinstance(obj, dict):
@@ -169,27 +184,29 @@ def doctor():
     
     checks = []
     
-    # 检查 xreach
     try:
         result = subprocess.run(["xreach", "--version"], capture_output=True, timeout=5)
         checks.append(("xreach CLI", result.returncode == 0, "Twitter 抓取"))
     except Exception:
         checks.append(("xreach CLI", False, "Twitter 抓取"))
     
-    # 检查 gh
     try:
         result = subprocess.run(["gh", "auth", "status"], capture_output=True, timeout=5)
         checks.append(("gh CLI", result.returncode == 0, "GitHub 抓取"))
     except Exception:
         checks.append(("gh CLI", False, "GitHub 抓取"))
     
-    # 检查 API Keys 和 Base URLs
     checks.append(("ANTHROPIC_API_KEY", bool(os.getenv("ANTHROPIC_API_KEY")), "Claude 文案生成"))
-    checks.append(("ANTHROPIC_BASE_URL", bool(os.getenv("ANTHROPIC_BASE_URL")), "Claude 自定义地址（可选）"))
     checks.append(("OPENAI_API_KEY", bool(os.getenv("OPENAI_API_KEY")), "GPT 备选"))
-    checks.append(("OPENAI_BASE_URL", bool(os.getenv("OPENAI_BASE_URL")), "OpenAI 自定义地址（可选）"))
     
-    # 检查配置文件
+    # 检查 Web 依赖
+    try:
+        import uvicorn
+        import fastapi
+        checks.append(("Web 依赖", True, "uvicorn + fastapi"))
+    except ImportError:
+        checks.append(("Web 依赖", False, "pip install rednote-ai[web]"))
+    
     from .config import get_config_path
     config_path = get_config_path()
     checks.append(("配置文件", config_path.exists(), str(config_path)))
@@ -204,22 +221,6 @@ def doctor():
         table.add_row(name, status, usage)
     
     console.print(table)
-    
-    console.print("\n[bold]💡 配置方式:[/bold]")
-    console.print("  1. 环境变量: export ANTHROPIC_API_KEY=sk-xxx")
-    console.print("  2. 配置文件: rednote-ai config --init")
-    console.print("  3. 命令行:   rednote-ai generate --api-key sk-xxx --base-url https://...")
-
-
-@app.command()
-def web(
-    host: str = typer.Option("127.0.0.1", help="监听地址"),
-    port: int = typer.Option(8000, help="端口"),
-):
-    """启动 Web 控制台"""
-    console.print(f"[bold green]🌐 启动 Web 控制台...[/bold green]")
-    console.print(f"  地址: http://{host}:{port}")
-    console.print("[yellow]⚠️ Web 控制台尚未实现[/yellow]")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}草稿管理 - RedNote AI{% endblock %}
+
+{% block content %}
+<div x-data="draftsPage()" x-init="loadDrafts()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">📝 草稿管理</h1>
+            <p class="text-gray-500 mt-1">审核、编辑并发布你的内容</p>
+        </div>
+        <a href="/fetch" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition">
+            + 抓取新内容
+        </a>
+    </div>
+
+    <!-- 筛选 -->
+    <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 mb-6">
+        <div class="flex items-center gap-4">
+            <button @click="filter = 'all'" 
+                    class="px-4 py-2 rounded-lg transition"
+                    :class="filter === 'all' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                全部 (<span x-text="drafts.length"></span>)
+            </button>
+            <button @click="filter = 'draft'" 
+                    class="px-4 py-2 rounded-lg transition"
+                    :class="filter === 'draft' ? 'bg-yellow-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                待审核 (<span x-text="drafts.filter(d => d.status === 'draft').length"></span>)
+            </button>
+            <button @click="filter = 'approved'" 
+                    class="px-4 py-2 rounded-lg transition"
+                    :class="filter === 'approved' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                已通过 (<span x-text="drafts.filter(d => d.status === 'approved').length"></span>)
+            </button>
+        </div>
+    </div>
+
+    <!-- 草稿列表 -->
+    <div x-show="filteredDrafts.length === 0" class="bg-white rounded-xl shadow-sm p-12 border border-gray-100 text-center">
+        <div class="text-6xl mb-4">📭</div>
+        <p class="text-gray-500">暂无草稿</p>
+        <a href="/fetch" class="inline-block mt-4 text-purple-600 hover:text-purple-700">去抓取内容 →</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <template x-for="draft in filteredDrafts" :key="draft.id">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs px-2 py-1 rounded-full"
+                              :class="draft.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
+                              x-text="draft.status === 'approved' ? '✅ 已通过' : '⏳ 待审核'"></span>
+                        <span class="text-xs text-gray-400" x-text="'分数: ' + draft.score.toFixed(2)"></span>
+                    </div>
+                    <h3 class="font-bold text-lg text-gray-900 mb-2" x-text="draft.title"></h3>
+                    <p class="text-gray-600 text-sm line-clamp-4" x-text="draft.content"></p>
+                    <div class="flex flex-wrap gap-1 mt-3">
+                        <template x-for="tag in draft.tags.slice(0, 5)" :key="tag">
+                            <span class="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded" x-text="'#' + tag"></span>
+                        </template>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                    <div class="flex gap-2">
+                        <button @click="approveDraft(draft.id)" x-show="draft.status !== 'approved'"
+                                class="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition">
+                            通过
+                        </button>
+                        <a :href="'/drafts/' + draft.id"
+                           class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">
+                            编辑
+                        </a>
+                    </div>
+                    <button @click="deleteDraft(draft.id)"
+                            class="px-3 py-1 text-sm text-red-500 hover:text-red-700 transition">
+                        删除
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+
+<script>
+function draftsPage() {
+    return {
+        drafts: [],
+        filter: 'all',
+        
+        get filteredDrafts() {
+            if (this.filter === 'all') return this.drafts;
+            return this.drafts.filter(d => d.status === this.filter);
+        },
+        
+        async loadDrafts() {
+            try {
+                const res = await fetch('/api/drafts');
+                const data = await res.json();
+                this.drafts = data.drafts || [];
+            } catch (e) {
+                console.error('Failed to load drafts:', e);
+            }
+        },
+        
+        async approveDraft(id) {
+            try {
+                await fetch(`/api/drafts/${id}/approve`, { method: 'POST' });
+                this.loadDrafts();
+            } catch (e) {
+                alert('操作失败: ' + e.message);
+            }
+        },
+        
+        async deleteDraft(id) {
+            if (!confirm('确定要删除这篇草稿吗？')) return;
+            try {
+                await fetch(`/api/drafts/${id}`, { method: 'DELETE' });
+                this.loadDrafts();
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

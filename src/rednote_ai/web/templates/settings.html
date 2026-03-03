@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}设置 - RedNote AI{% endblock %}
+
+{% block content %}
+<div x-data="settingsPage()">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">⚙️ 设置</h1>
+        <p class="text-gray-500 mt-1">配置 API、信息源和生成选项</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- LLM 配置 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">🤖 LLM 配置</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+                    <select class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="openai">OpenAI (GPT)</option>
+                        <option value="openai_compatible">OpenAI 兼容 API</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                    <input type="text" value="claude-3-5-sonnet-20241022" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <input type="password" placeholder="sk-..." 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-400 mt-1">从环境变量 ANTHROPIC_API_KEY 或 OPENAI_API_KEY 读取</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Base URL (可选)</label>
+                    <input type="text" placeholder="https://api.anthropic.com" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-400 mt-1">自定义 API 地址，支持代理或兼容 API</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 信息源配置 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">📡 信息源</h2>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">📄</span>
+                        <div>
+                            <p class="font-medium">Arxiv</p>
+                            <p class="text-xs text-gray-500">AI 论文</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                    </label>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">🐙</span>
+                        <div>
+                            <p class="font-medium">GitHub</p>
+                            <p class="text-xs text-gray-500">热门项目</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                    </label>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">🐦</span>
+                        <div>
+                            <p class="font-medium">Twitter</p>
+                            <p class="text-xs text-gray-500">需要 xreach CLI</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 生成配置 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">✍️ 生成配置</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">默认风格</label>
+                    <select class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="news">📰 新闻速递</option>
+                        <option value="tutorial">📖 教程干货</option>
+                        <option value="review">🔍 测评体验</option>
+                        <option value="opinion">💭 观点输出</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">内容最大长度</label>
+                    <input type="number" value="800" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">变体数量</label>
+                    <input type="number" value="3" min="1" max="5"
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-400 mt-1">每次生成多少个版本供选择</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 小红书配置 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">📱 小红书</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">发布方式</label>
+                    <select class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="manual">手动发布</option>
+                        <option value="mcp">MCP 自动化</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">MCP URL</label>
+                    <input type="text" placeholder="http://localhost:18060/mcp" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+                
+                <div class="p-4 bg-yellow-50 rounded-lg">
+                    <p class="text-sm text-yellow-700">
+                        ⚠️ 自动发布功能需要配置小红书 MCP 服务，请参考文档设置
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 flex justify-end gap-4">
+        <button class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+            重置
+        </button>
+        <button class="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition">
+            保存设置
+        </button>
+    </div>
+</div>
+
+<script>
+function settingsPage() {
+    return {
+        // TODO: 加载和保存设置
+    }
+}
+</script>
+{% endblock %}
