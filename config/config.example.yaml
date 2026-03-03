@@ -1,0 +1,75 @@
+# RedNote AI 配置文件
+
+# LLM 配置
+llm:
+  # 文案生成
+  writer:
+    provider: anthropic  # anthropic / openai / zhipu / qwen
+    model: claude-3-5-sonnet-20241022
+    api_key: ${ANTHROPIC_API_KEY}
+  
+  # 热点分析
+  analyze:
+    provider: openai
+    model: gpt-4o-mini
+    api_key: ${OPENAI_API_KEY}
+
+# 图片生成
+image:
+  provider: dalle  # dalle / midjourney / sd / jimeng
+  api_key: ${OPENAI_API_KEY}
+
+# 信息源配置
+sources:
+  twitter:
+    enabled: true
+    cookies: ${TWITTER_COOKIES}
+    accounts:
+      - OpenAI
+      - AnthropicAI
+      - GoogleDeepMind
+  
+  arxiv:
+    enabled: true
+    categories:
+      - cs.AI
+      - cs.LG
+      - cs.CL
+  
+  github:
+    enabled: true
+    languages:
+      - python
+      - typescript
+  
+  rss:
+    enabled: true
+    feeds:
+      - https://openai.com/blog/rss.xml
+      - https://www.anthropic.com/rss.xml
+
+# 小红书发布配置
+xiaohongshu:
+  # 使用 MCP 服务
+  mcp_url: http://localhost:18060/mcp
+  # 或使用 cookies
+  cookies: ${XHS_COOKIES}
+
+# 内容生成配置
+generate:
+  # 每次生成的变体数量
+  variants: 3
+  # 默认风格
+  default_style: news
+  # 内容长度（字符）
+  max_length: 800
+
+# 定时任务
+schedule:
+  # 每日抓取时间
+  fetch_cron: "0 8 * * *"
+  # 发布时间（需人工确认后）
+  publish_times:
+    - "12:00"
+    - "18:00"
+    - "21:00"
